@@ -576,6 +576,91 @@
             overflow-x: auto;
         }
 
+        .report-item {
+            color: var(--text-primary);
+        }
+
+        .report-item h5 {
+            color: var(--primary);
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .report-item h5:first-child {
+            margin-top: 0;
+        }
+
+        .report-item ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 8px 0;
+        }
+
+        .report-item ul li {
+            padding: 6px 0;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .report-item ul li strong {
+            color: var(--text-primary);
+            margin-right: 8px;
+        }
+
+        .report-item p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+
+        .report-comparison {
+            background: var(--dark-bg);
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            margin: 8px 0;
+        }
+
+        .report-comparison p {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.7;
+        }
+
+        .migration-plan {
+            background: var(--dark-bg);
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid var(--success);
+            line-height: 1.7;
+            margin: 8px 0;
+        }
+
+        .issues-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .issues-list li {
+            padding: 10px 14px;
+            margin: 6px 0;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid var(--danger);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .issues-list li::before {
+            content: '⚠️ ';
+            margin-right: 8px;
+        }
+
         pre {
             background: var(--dark-bg);
             padding: 15px;
@@ -1017,6 +1102,151 @@
         }
 
         // Load all reports
+        function formatReportData(agent, data) {
+            let html = '';
+
+            if (agent === 'discovery') {
+                // Format Discovery Agent report
+                html += '<div class="report-item">';
+                html += '<h5>Status</h5>';
+                html += `<p>${data.status || 'Unknown'}</p>`;
+
+                if (data.source) {
+                    html += '<h5>Source Database</h5>';
+                    html += '<ul>';
+                    html += `<li><strong>Database:</strong> ${data.source.database || 'N/A'}</li>`;
+                    html += `<li><strong>Schemas:</strong> ${data.source.schemas?.join(', ') || 'N/A'}</li>`;
+                    if (data.source.tables) {
+                        const totalTables = Object.values(data.source.tables).reduce((sum, tables) => sum + tables.length, 0);
+                        html += `<li><strong>Total Tables:</strong> ${totalTables}</li>`;
+                    }
+                    html += '</ul>';
+                }
+
+                if (data.destination) {
+                    html += '<h5>Destination Database</h5>';
+                    html += '<ul>';
+                    html += `<li><strong>Database:</strong> ${data.destination.database || 'N/A'}</li>`;
+                    html += `<li><strong>Schemas:</strong> ${data.destination.schemas?.join(', ') || 'N/A'}</li>`;
+                    if (data.destination.tables) {
+                        const totalTables = Object.values(data.destination.tables).reduce((sum, tables) => sum + tables.length, 0);
+                        html += `<li><strong>Total Tables:</strong> ${totalTables}</li>`;
+                    }
+                    html += '</ul>';
+                }
+
+                if (data.comparison) {
+                    html += '<h5>Comparison Analysis</h5>';
+                    html += '<div class="report-comparison">';
+                    html += `<p>${data.comparison.analysis || data.comparison.summary || JSON.stringify(data.comparison, null, 2)}</p>`;
+                    html += '</div>';
+                }
+                html += '</div>';
+
+            } else if (agent === 'validation') {
+                // Format Validation Agent report
+                html += '<div class="report-item">';
+                html += '<h5>Status</h5>';
+                html += `<p>${data.status || 'Unknown'}</p>`;
+
+                if (data.summary) {
+                    html += '<h5>Summary</h5>';
+                    html += `<p>${data.summary}</p>`;
+                }
+
+                if (data.validated_tables !== undefined) {
+                    html += '<h5>Statistics</h5>';
+                    html += '<ul>';
+                    html += `<li><strong>Tables Validated:</strong> ${data.validated_tables}</li>`;
+                    if (data.total_rows !== undefined) {
+                        html += `<li><strong>Total Rows:</strong> ${data.total_rows.toLocaleString()}</li>`;
+                    }
+                    html += '</ul>';
+                }
+
+                if (data.issues && data.issues.length > 0) {
+                    html += '<h5>Issues Found</h5>';
+                    html += '<ul class="issues-list">';
+                    data.issues.forEach(issue => {
+                        html += `<li>${issue}</li>`;
+                    });
+                    html += '</ul>';
+                } else if (data.issues) {
+                    html += '<h5>Issues Found</h5>';
+                    html += '<p style="color: var(--success);">No issues found</p>';
+                }
+                html += '</div>';
+
+            } else if (agent === 'generation') {
+                // Format Generation Agent report
+                html += '<div class="report-item">';
+                html += '<h5>Status</h5>';
+                html += `<p>${data.status || 'Unknown'}</p>`;
+
+                if (data.recommendation) {
+                    html += '<h5>Recommendation</h5>';
+                    html += `<p><strong>${data.recommendation}</strong></p>`;
+                }
+
+                if (data.reasoning) {
+                    html += '<h5>Reasoning</h5>';
+                    html += `<p>${data.reasoning}</p>`;
+                }
+
+                if (data.migration_plan) {
+                    html += '<h5>Migration Plan</h5>';
+                    if (typeof data.migration_plan === 'string') {
+                        html += `<div class="migration-plan">${data.migration_plan.replace(/\n/g, '<br>')}</div>`;
+                    } else {
+                        html += `<pre class="report-content">${JSON.stringify(data.migration_plan, null, 2)}</pre>`;
+                    }
+                }
+                html += '</div>';
+
+            } else if (agent === 'execution') {
+                // Format Execution Agent report
+                html += '<div class="report-item">';
+                html += '<h5>Status</h5>';
+                html += `<p>${data.status || 'Unknown'}</p>`;
+
+                if (data.summary) {
+                    html += '<h5>Summary</h5>';
+                    html += `<p>${data.summary}</p>`;
+                }
+
+                if (data.tables_migrated !== undefined) {
+                    html += '<h5>Statistics</h5>';
+                    html += '<ul>';
+                    html += `<li><strong>Tables Migrated:</strong> ${data.tables_migrated}</li>`;
+                    if (data.total_rows !== undefined) {
+                        html += `<li><strong>Total Rows:</strong> ${data.total_rows.toLocaleString()}</li>`;
+                    }
+                    if (data.duration) {
+                        html += `<li><strong>Duration:</strong> ${data.duration}</li>`;
+                    }
+                    html += '</ul>';
+                }
+
+                if (data.errors && data.errors.length > 0) {
+                    html += '<h5>Errors</h5>';
+                    html += '<ul class="issues-list">';
+                    data.errors.forEach(error => {
+                        html += `<li>${error}</li>`;
+                    });
+                    html += '</ul>';
+                } else if (data.errors) {
+                    html += '<p style="color: var(--success);">Migration completed successfully</p>';
+                }
+                html += '</div>';
+
+            } else {
+                // Fallback to JSON for unknown report types
+                html += `<pre class="report-content">${JSON.stringify(data, null, 2)}</pre>`;
+            }
+
+            return html;
+        }
+
         async function loadAllReports() {
             try {
                 const response = await fetch(`${API_BASE}/api/reports`);
@@ -1032,7 +1262,7 @@
                             reportDiv.className = 'report-section';
                             reportDiv.innerHTML = `
                                 <h4>${agent.charAt(0).toUpperCase() + agent.slice(1)} Agent Report</h4>
-                                <pre class="report-content">${JSON.stringify(data.results[agent], null, 2)}</pre>
+                                ${formatReportData(agent, data.results[agent])}
                             `;
                             reportsContainer.appendChild(reportDiv);
                         }

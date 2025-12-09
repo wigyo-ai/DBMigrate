@@ -17,18 +17,7 @@ from agents.generation_agent import GenerationAgent
 from agents.execution_agent import ExecutionAgent
 from db_operations import test_connection
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Initialize Flask app
-app = Flask(__name__, static_folder='static')
-CORS(app)
-
-# Global state management
+# Global state management (defined before logging handler)
 app_state = {
     'configured': False,
     'source_config': None,
@@ -51,14 +40,83 @@ app_state = {
 state_lock = threading.Lock()
 
 
+# Custom logging handler to capture all logs for UI display
+class UILogHandler(logging.Handler):
+    """Custom handler that adds log messages to app_state for UI display."""
+
+    # Loggers to exclude from UI (too noisy)
+    EXCLUDED_LOGGERS = {
+        'werkzeug',  # Flask HTTP server logs
+        'urllib3',   # HTTP library logs
+    }
+
+    def emit(self, record):
+        try:
+            # Filter out noisy loggers
+            if record.name in self.EXCLUDED_LOGGERS:
+                return
+
+            # Also filter out werkzeug child loggers
+            if any(record.name.startswith(excluded + '.') for excluded in self.EXCLUDED_LOGGERS):
+                return
+
+            # Map logging levels to UI levels
+            level_map = {
+                logging.DEBUG: 'info',
+                logging.INFO: 'info',
+                logging.WARNING: 'warning',
+                logging.ERROR: 'error',
+                logging.CRITICAL: 'error'
+            }
+
+            level = level_map.get(record.levelno, 'info')
+            message = self.format(record)
+
+            # Remove timestamp and logger name prefix for cleaner UI display
+            # Format is: "2024-01-01 12:00:00 - module.name - LEVEL - message"
+            parts = message.split(' - ', 3)
+            if len(parts) >= 4:
+                clean_message = parts[3]  # Just the message
+            else:
+                clean_message = message
+
+            with state_lock:
+                app_state['logs'].append({
+                    'message': clean_message,
+                    'level': level,
+                    'timestamp': record.created
+                })
+        except Exception:
+            self.handleError(record)
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Add UI log handler to root logger to capture all logs
+ui_handler = UILogHandler()
+ui_handler.setLevel(logging.INFO)
+ui_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(ui_handler)
+
+# Initialize Flask app
+app = Flask(__name__, static_folder='static')
+CORS(app)
+
+
 def add_log(message: str, level: str = 'info'):
     """Add a log entry to the application logs."""
-    with state_lock:
-        app_state['logs'].append({
-            'message': message,
-            'level': level,
-            'timestamp': None  # Could add timestamp
-        })
+    # Use logger instead of directly adding to app_state
+    # The UILogHandler will capture it and add it to app_state automatically
+    if level == 'error':
+        logger.error(message)
+    elif level == 'warning':
+        logger.warning(message)
+    else:
         logger.info(message)
 
 
@@ -367,7 +425,9 @@ def run_execution():
 
         def progress_callback(log_entry):
             """Callback for execution progress updates."""
-            add_log(log_entry['message'], log_entry['level'])
+            # No longer needed - UILogHandler captures all logger.info() calls
+            # The execution agent already logs via logger, so we don't need to duplicate
+            pass
 
         execution_agent = ExecutionAgent(app_state['gpte_client'], progress_callback)
 
