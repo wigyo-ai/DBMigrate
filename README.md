@@ -89,9 +89,11 @@ You'll need connection details for both source and destination PostgreSQL databa
 
 Required credentials for H2O.ai GPTe:
 
-- **API URL**: `https://h2ogpte.internal.dedicated.h2o.ai/api` (or your instance URL)
-- **API Key**: Your H2O.ai GPTe API key
-- **Model ID**: Model to use (default: `gpt-4-turbo-2024-04-09`)
+- **API URL**: `https://h2ogpte.internal.dedicated.h2o.ai` (base URL without /api suffix)
+- **API Key**: Your H2O.ai GPTe API key (starts with `sk-`)
+- **Model ID**: Model to use (e.g., `gpt-4.1-mini`, `gpt-4-turbo-2024-04-09`)
+
+**Note**: This application uses the official H2O.ai GPTe Python SDK, which handles authentication and SSL certificates automatically.
 
 ## Usage
 

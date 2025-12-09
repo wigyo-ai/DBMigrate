@@ -87,10 +87,12 @@ SSL Mode: require
 
 ### H2O.ai GPTe
 ```
-API URL: https://h2ogpte.internal.dedicated.h2o.ai/api
-API Key: your-gpte-api-key
-Model ID: gpt-4-turbo-2024-04-09
+API URL: https://h2ogpte.internal.dedicated.h2o.ai
+API Key: sk-your-api-key
+Model ID: gpt-4.1-mini
 ```
+
+**Note**: Use the base URL without `/api` suffix when using the SDK.
 
 ## Testing the Setup
 

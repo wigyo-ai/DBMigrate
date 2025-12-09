@@ -1,19 +1,29 @@
 """
 H2O.ai GPTe API Client Wrapper
-Handles communication with H2O GPTe for agent orchestration.
+Handles communication with H2O GPTe using the official Python SDK.
 """
 
-import requests
 import logging
 import time
 from typing import Dict, List, Optional
 import json
+import urllib3
+
+# Suppress SSL warnings for internal instances
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+try:
+    from h2ogpte import H2OGPTE
+except ImportError:
+    raise ImportError(
+        "h2ogpte SDK not installed. Please install it with: pip install h2ogpte"
+    )
 
 logger = logging.getLogger(__name__)
 
 
 class GPTeClient:
-    """Wrapper for H2O.ai GPTe API interactions."""
+    """Wrapper for H2O.ai GPTe SDK interactions."""
 
     def __init__(self, api_url: str, api_key: str, model_id: str = "gpt-4-turbo-2024-04-09"):
         """
@@ -27,44 +37,32 @@ class GPTeClient:
         self.api_url = api_url.rstrip('/')
         self.api_key = api_key
         self.model_id = model_id
-        self.session_id = None
         self.conversation_history = []
         self.max_retries = 3
         self.retry_delay = 2  # seconds
 
-    def _get_headers(self) -> Dict[str, str]:
-        """Get API request headers."""
-        return {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
-        }
+        # Initialize H2OGPTE client
+        try:
+            self.client = H2OGPTE(
+                address=self.api_url,
+                api_key=self.api_key,
+                verify=False  # Disable SSL verification for internal instances
+            )
+            logger.info(f"H2OGPTE client initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize H2OGPTE client: {e}")
+            raise ConnectionError(f"Failed to initialize H2OGPTE client: {str(e)}")
 
     def create_session(self) -> str:
         """
-        Create a new chat session.
+        Create a new chat session (handled internally by SDK).
 
         Returns:
-            Session ID
+            Session ID (managed by SDK)
         """
-        try:
-            endpoint = f"{self.api_url}/v1/sessions"
-            response = requests.post(
-                endpoint,
-                headers=self._get_headers(),
-                json={
-                    'model': self.model_id,
-                    'system_prompt': 'You are an expert database migration assistant.'
-                },
-                timeout=30
-            )
-            response.raise_for_status()
-            data = response.json()
-            self.session_id = data.get('session_id') or data.get('id')
-            logger.info(f"Created GPTe session: {self.session_id}")
-            return self.session_id
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to create session: {e}")
-            raise ConnectionError(f"Failed to create GPTe session: {str(e)}")
+        # The H2OGPTE SDK manages sessions internally
+        logger.info("Using H2OGPTE SDK session management")
+        return "sdk_managed"
 
     def send_message(self, message: str, context: Optional[Dict] = None) -> Dict[str, any]:
         """
@@ -77,9 +75,6 @@ class GPTeClient:
         Returns:
             Dictionary containing the response
         """
-        if not self.session_id:
-            self.create_session()
-
         # Build the full prompt with context if provided
         full_prompt = message
         if context:
@@ -88,23 +83,15 @@ class GPTeClient:
 
         for attempt in range(self.max_retries):
             try:
-                endpoint = f"{self.api_url}/v1/sessions/{self.session_id}/messages"
-                payload = {
-                    'message': full_prompt,
-                    'model': self.model_id
-                }
-
-                response = requests.post(
-                    endpoint,
-                    headers=self._get_headers(),
-                    json=payload,
-                    timeout=120  # Longer timeout for complex queries
+                # Use the H2OGPTE SDK to send the question
+                response = self.client.answer_question(
+                    question=full_prompt,
+                    llm=self.model_id,
+                    timeout=120
                 )
-                response.raise_for_status()
-                data = response.json()
 
-                # Extract response text
-                response_text = self._extract_response_text(data)
+                # Extract response text from SDK response
+                response_text = response.content if hasattr(response, 'content') else str(response)
 
                 # Store in conversation history
                 self.conversation_history.append({
@@ -119,22 +106,11 @@ class GPTeClient:
                 return {
                     'success': True,
                     'response': response_text,
-                    'raw_data': data
+                    'raw_data': response
                 }
 
-            except requests.exceptions.Timeout:
-                logger.warning(f"Request timeout (attempt {attempt + 1}/{self.max_retries})")
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay)
-                    continue
-                return {
-                    'success': False,
-                    'error': 'Request timeout',
-                    'response': ''
-                }
-
-            except requests.exceptions.RequestException as e:
-                logger.error(f"API request failed: {e}")
+            except Exception as e:
+                logger.error(f"API request failed (attempt {attempt + 1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                     continue
@@ -149,35 +125,6 @@ class GPTeClient:
             'error': 'Max retries exceeded',
             'response': ''
         }
-
-    def _extract_response_text(self, data: Dict) -> str:
-        """
-        Extract response text from API response data.
-
-        Args:
-            data: API response dictionary
-
-        Returns:
-            Extracted response text
-        """
-        # Try common response field patterns
-        if 'response' in data:
-            return str(data['response'])
-        elif 'message' in data:
-            return str(data['message'])
-        elif 'content' in data:
-            return str(data['content'])
-        elif 'text' in data:
-            return str(data['text'])
-        elif 'choices' in data and len(data['choices']) > 0:
-            choice = data['choices'][0]
-            if 'message' in choice:
-                return str(choice['message'].get('content', ''))
-            elif 'text' in choice:
-                return str(choice['text'])
-
-        # If no standard field found, return JSON dump
-        return json.dumps(data)
 
     def send_agent_prompt(self, agent_name: str, role: str, tasks: List[str],
                           context: Optional[Dict] = None) -> Dict[str, any]:
@@ -246,10 +193,9 @@ Return your findings in a clear, structured format using JSON where appropriate.
             return None
 
     def reset_conversation(self):
-        """Reset conversation history and create new session."""
+        """Reset conversation history."""
         self.conversation_history = []
-        self.session_id = None
-        self.create_session()
+        logger.info("Conversation history reset")
 
     def get_conversation_history(self) -> List[Dict]:
         """
@@ -259,6 +205,21 @@ Return your findings in a clear, structured format using JSON where appropriate.
             List of conversation messages
         """
         return self.conversation_history.copy()
+
+    def get_available_models(self) -> List[str]:
+        """
+        Get list of available LLM models.
+
+        Returns:
+            List of model names
+        """
+        try:
+            models = self.client.get_llms()
+            logger.info(f"Available models: {models}")
+            return models
+        except Exception as e:
+            logger.warning(f"Could not retrieve available models: {e}")
+            return [self.model_id]
 
 
 class AgentOrchestrator:
