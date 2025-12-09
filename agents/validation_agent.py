@@ -85,7 +85,8 @@ class ValidationAgent:
 
     def perform_test_migration(self, source_config: Dict[str, str],
                                dest_config: Dict[str, str],
-                               test_table: Dict[str, str]) -> Dict[str, any]:
+                               test_table: Dict[str, str],
+                               max_rows: int = 100) -> Dict[str, any]:
         """
         Perform a test migration on a selected table.
 
@@ -93,6 +94,7 @@ class ValidationAgent:
             source_config: Source database configuration
             dest_config: Destination database configuration
             test_table: Dictionary with schema and table name
+            max_rows: Maximum number of rows to migrate for testing (default: 100)
 
         Returns:
             Dictionary containing test migration results
@@ -100,7 +102,7 @@ class ValidationAgent:
         schema = test_table['schema']
         table = test_table['table']
 
-        logger.info(f"Starting test migration for {schema}.{table}")
+        logger.info(f"Starting test migration for {schema}.{table} (max {max_rows} rows)")
 
         result = {
             'table': f"{schema}.{table}",
@@ -109,9 +111,10 @@ class ValidationAgent:
         }
 
         try:
-            # Perform migration
+            # Perform migration with limited rows for testing
             migration_result = migrate_table(
-                source_config, dest_config, schema, table, batch_size=500
+                source_config, dest_config, schema, table,
+                batch_size=100, max_rows=max_rows
             )
             result['migration'] = migration_result
 

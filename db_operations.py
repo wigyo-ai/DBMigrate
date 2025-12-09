@@ -361,7 +361,7 @@ def calculate_table_checksum(config: Dict[str, str], schema: str, table: str, sa
 
 
 def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
-                  schema: str, table: str, batch_size: int = 1000) -> Dict[str, any]:
+                  schema: str, table: str, batch_size: int = 1000, max_rows: int = None) -> Dict[str, any]:
     """
     Migrate a table from source to destination database.
 
@@ -371,6 +371,7 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
         schema: Schema name
         table: Table name
         batch_size: Number of rows to migrate per batch
+        max_rows: Maximum number of rows to migrate (None for all rows)
 
     Returns:
         Dictionary containing migration results
@@ -381,6 +382,10 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
     try:
         # Get row count
         total_rows = get_row_count(source_config, schema, table)
+
+        # Limit total rows if max_rows is specified
+        if max_rows is not None:
+            total_rows = min(total_rows, max_rows)
 
         # Get table structure
         structure = get_table_structure(source_config, schema, table)

@@ -8,6 +8,8 @@ import time
 from typing import Dict, List, Optional
 import json
 import urllib3
+from datetime import date, datetime
+from decimal import Decimal
 
 # Suppress SSL warnings for internal instances
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -20,6 +22,17 @@ except ImportError:
     )
 
 logger = logging.getLogger(__name__)
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles date, datetime, and decimal objects."""
+
+    def default(self, obj):
+        if isinstance(obj, (date, datetime)):
+            return obj.isoformat()
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 
 class GPTeClient:
@@ -102,7 +115,7 @@ class GPTeClient:
         # Build the full prompt with context if provided
         full_prompt = message
         if context:
-            context_str = json.dumps(context, indent=2)
+            context_str = json.dumps(context, indent=2, cls=DateTimeEncoder)
             full_prompt = f"{message}\n\nContext:\n```json\n{context_str}\n```"
 
         for attempt in range(self.max_retries):
