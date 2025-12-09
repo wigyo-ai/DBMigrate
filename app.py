@@ -76,6 +76,12 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
+@app.route('/test')
+def test_page():
+    """Serve the test/diagnostic page."""
+    return send_from_directory('static', 'test.html')
+
+
 @app.route('/api/configure', methods=['POST'])
 def configure():
     """
@@ -479,6 +485,17 @@ def health_check():
         'status': 'healthy',
         'configured': app_state['configured']
     })
+
+
+# Catch-all route for static files (must be last)
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve static files."""
+    try:
+        return send_from_directory('static', path)
+    except:
+        # If file not found, return 404
+        return jsonify({'error': 'File not found'}), 404
 
 
 if __name__ == '__main__':

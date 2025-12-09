@@ -50,8 +50,32 @@ class GPTeClient:
             )
             logger.info(f"H2OGPTE client initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize H2OGPTE client: {e}")
-            raise ConnectionError(f"Failed to initialize H2OGPTE client: {str(e)}")
+            error_type = type(e).__name__
+            error_msg = str(e)
+
+            # Check for authentication errors
+            if error_type == 'UnauthorizedError' or 'Unauthorized' in error_msg:
+                logger.error(f"Authentication failed - Invalid API key or insufficient permissions")
+                raise ConnectionError(
+                    "H2O.ai GPTe authentication failed.\n\n"
+                    "The API key is being rejected by the server. Please verify:\n"
+                    "1. API key is correct (copy it carefully, including any dashes or special characters)\n"
+                    "2. API key has not expired\n"
+                    "3. API key has permission to access this GPTe instance\n"
+                    "4. You are authorized to use this GPTe instance"
+                )
+            # Check for metadata parsing errors (usually also auth related)
+            elif error_type == 'TypeError' and "Meta()" in error_msg and "mapping" in error_msg:
+                logger.error(f"Authentication failed - API key may be invalid or API may be unreachable")
+                raise ConnectionError(
+                    "Failed to authenticate with H2O.ai GPTe. Please verify:\n"
+                    "1. API key is valid (not 'sk-test-key' or placeholder)\n"
+                    "2. API URL is correct\n"
+                    "3. Network connectivity to the GPTe instance"
+                )
+            else:
+                logger.error(f"Failed to initialize H2OGPTE client: {e}")
+                raise ConnectionError(f"Failed to initialize H2OGPTE client: {str(e)}")
 
     def create_session(self) -> str:
         """

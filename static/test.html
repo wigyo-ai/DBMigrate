@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configuration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-box {
+            background: #f0f0f0;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Database Migration - Configuration Test</h1>
+
+    <div class="test-box">
+        <h2>1. Test Server Connection</h2>
+        <button onclick="testServer()">Test Server</button>
+        <pre id="serverResult">Click button to test...</pre>
+    </div>
+
+    <div class="test-box">
+        <h2>2. Test Health Endpoint</h2>
+        <button onclick="testHealth()">Test Health</button>
+        <pre id="healthResult">Click button to test...</pre>
+    </div>
+
+    <div class="test-box">
+        <h2>3. Test Configuration (Simple)</h2>
+        <p><strong>Note:</strong> This test uses placeholder credentials and is expected to fail.
+        Use the main interface with real credentials for actual testing.</p>
+        <button onclick="testConfigSimple()">Test Simple Config</button>
+        <pre id="configSimpleResult">Click button to test...</pre>
+    </div>
+
+    <div class="test-box">
+        <h2>Debug Info</h2>
+        <p>API Base URL: <code id="apiBase"></code></p>
+        <p>Current Page: <code id="currentPage"></code></p>
+        <p>Browser Console: <span>Open DevTools (F12) to see detailed logs</span></p>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        document.getElementById('apiBase').textContent = API_BASE || '(empty - same origin)';
+        document.getElementById('currentPage').textContent = window.location.href;
+
+        async function testServer() {
+            const result = document.getElementById('serverResult');
+            result.textContent = 'Testing...';
+
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                const text = await response.text();
+                result.innerHTML = `<span class="success">✓ Server is responding (${response.status})</span>\n${text.substring(0, 200)}...`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testHealth() {
+            const result = document.getElementById('healthResult');
+            result.textContent = 'Testing...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                result.innerHTML = `<span class="success">✓ Health check passed</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testConfigSimple() {
+            const result = document.getElementById('configSimpleResult');
+            result.textContent = 'Testing...';
+
+            const config = {
+                source: {
+                    host: 'test-host',
+                    port: 5432,
+                    database: 'test_db',
+                    user: 'test_user',
+                    password: 'test_pass',
+                    sslmode: 'prefer'
+                },
+                destination: {
+                    host: 'test-host2',
+                    port: 5432,
+                    database: 'test_db2',
+                    user: 'test_user2',
+                    password: 'test_pass2',
+                    sslmode: 'prefer'
+                },
+                gpte: {
+                    api_url: 'https://h2ogpte.internal.dedicated.h2o.ai',
+                    api_key: 'sk-test-key',
+                    model_id: 'gpt-4.1-mini'
+                }
+            };
+
+            try {
+                console.log('Sending config:', config);
+                const response = await fetch(`${API_BASE}/api/configure`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (data.success) {
+                    result.innerHTML = `<span class="success">✓ Configuration endpoint is working</span>\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ Configuration failed (expected - using test data)</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                result.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        // Auto-run tests on load
+        window.onload = () => {
+            console.log('Test page loaded');
+            console.log('API Base:', API_BASE);
+        };
+    </script>
+</body>
+</html>

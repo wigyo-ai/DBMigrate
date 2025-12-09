@@ -519,6 +519,8 @@
 
         // Save configuration
         async function saveConfiguration() {
+            console.log('saveConfiguration() called');
+
             const config = {
                 source: {
                     host: document.getElementById('srcHost').value,
@@ -543,14 +545,49 @@
                 }
             };
 
+            console.log('Config prepared:', {
+                source: { host: config.source.host, database: config.source.database },
+                destination: { host: config.destination.host, database: config.destination.database },
+                gpte: { api_url: config.gpte.api_url, model: config.gpte.model_id }
+            });
+
+            // Validate required fields
+            if (!config.gpte.api_key || config.gpte.api_key.trim() === '') {
+                showAlert('Please enter a valid H2O.ai GPTe API Key', 'error');
+                return;
+            }
+            if (!config.gpte.api_url || config.gpte.api_url.trim() === '') {
+                showAlert('Please enter a valid H2O.ai GPTe API URL', 'error');
+                return;
+            }
+            if (!config.source.host || !config.source.database || !config.source.user) {
+                showAlert('Please fill in all source database fields', 'error');
+                return;
+            }
+            if (!config.destination.host || !config.destination.database || !config.destination.user) {
+                showAlert('Please fill in all destination database fields', 'error');
+                return;
+            }
+
             try {
+                console.log('Sending POST to /api/configure');
                 const response = await fetch(`${API_BASE}/api/configure`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
                 });
 
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Response error:', errorText);
+                    showAlert(`Server error: ${response.status} - ${errorText}`, 'error');
+                    return;
+                }
+
                 const result = await response.json();
+                console.log('Response result:', result);
 
                 if (result.success) {
                     showAlert('Configuration saved successfully!', 'success');
@@ -559,6 +596,7 @@
                     showAlert(`Configuration failed: ${result.error}`, 'error');
                 }
             } catch (error) {
+                console.error('Fetch error:', error);
                 showAlert(`Error: ${error.message}`, 'error');
             }
         }
