@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get your Database Migration System up and running in 5 minutes.
+Get your H2O.ai Agentic Database Migration System up and running in 5 minutes.
 
 ## Prerequisites
 
@@ -123,7 +123,7 @@ Click **"Start Migration Workflow"** button.
 
 Watch the agents work:
 1. **Discovery Agent** - Analyzes both databases (30-60 seconds)
-2. **Validation Agent** - Tests migration feasibility (1-2 minutes)
+2. **Validation Agent** - Tests migration feasibility with 100-row sample (1-2 minutes)
 3. **Generation Agent** - Creates migration plan (30-60 seconds)
 4. **Awaiting Approval** - Human decision required
 
@@ -336,7 +336,7 @@ pip install -r requirements.txt
 
 ### 2. Validation Agent (1-2 minutes)
 - Creates sample backups
-- Performs test migration on a small table
+- Performs test migration on a small table (limited to 100 rows)
 - Validates data integrity (row counts, checksums)
 - **Output**: Feasibility assessment with AI recommendations
 
@@ -460,6 +460,6 @@ For detailed documentation, see [README.md](README.md)
 
 ---
 
-**Quick Start Guide Version**: 1.0.0
-**Last Updated**: December 9, 2025
+**Quick Start Guide Version**: 1.0.1
+**Last Updated**: December 12, 2025
 **Estimated Setup Time**: 5 minutes ⏱️

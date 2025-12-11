@@ -341,24 +341,40 @@ def run_workflow():
 @app.route('/api/workflow/approve', methods=['POST'])
 def approve_workflow():
     """Approve the migration and proceed to execution."""
+    logger.info("Approve workflow endpoint called")
     try:
+        # Check status and get generation_agent reference (without logging inside lock)
+        workflow_status = None
+        generation_agent = None
         with state_lock:
-            if app_state['workflow_status'] != 'awaiting_approval':
-                return jsonify({
-                    'success': False,
-                    'error': 'Workflow not awaiting approval'
-                }), 400
+            workflow_status = app_state['workflow_status']
+            if workflow_status == 'awaiting_approval' and 'generation_agent' in app_state:
+                generation_agent = app_state['generation_agent']
 
-            if 'generation_agent' not in app_state:
-                return jsonify({
-                    'success': False,
-                    'error': 'Generation agent not available'
-                }), 400
+        # Log and validate outside the lock to avoid deadlock with UILogHandler
+        logger.info(f"Current workflow status: {workflow_status}")
 
-            # Record approval
-            generation_agent = app_state['generation_agent']
-            generation_agent.set_human_decision(True, "Approved via API")
+        if workflow_status != 'awaiting_approval':
+            error_msg = f"Workflow not awaiting approval (current status: {workflow_status})"
+            logger.warning(error_msg)
+            return jsonify({
+                'success': False,
+                'error': error_msg
+            }), 400
 
+        if not generation_agent:
+            logger.warning("Generation agent not available")
+            return jsonify({
+                'success': False,
+                'error': 'Generation agent not available'
+            }), 400
+
+        # Record approval (this also logs)
+        generation_agent.set_human_decision(True, "Approved via API")
+        logger.info("Human decision recorded as APPROVED")
+
+        # Update workflow status
+        with state_lock:
             app_state['workflow_status'] = 'running'
 
         add_log("Migration approved by user. Starting Execution Agent...")
@@ -367,6 +383,7 @@ def approve_workflow():
         thread = threading.Thread(target=run_execution)
         thread.daemon = True
         thread.start()
+        logger.info("Execution thread started")
 
         return jsonify({
             'success': True,
@@ -374,7 +391,7 @@ def approve_workflow():
         })
 
     except Exception as e:
-        logger.error(f"Approval failed: {e}")
+        logger.error(f"Approval failed: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
@@ -388,6 +405,8 @@ def deny_workflow():
         data = request.get_json() or {}
         reason = data.get('reason', 'Denied by user')
 
+        # Check status and get generation_agent reference
+        generation_agent = None
         with state_lock:
             if app_state['workflow_status'] != 'awaiting_approval':
                 return jsonify({
@@ -397,8 +416,13 @@ def deny_workflow():
 
             if 'generation_agent' in app_state:
                 generation_agent = app_state['generation_agent']
-                generation_agent.set_human_decision(False, reason)
 
+        # Release lock before calling methods that log (to avoid deadlock with UILogHandler)
+        if generation_agent:
+            generation_agent.set_human_decision(False, reason)
+
+        # Update workflow status
+        with state_lock:
             app_state['workflow_status'] = 'denied'
 
         add_log(f"Migration denied by user: {reason}")

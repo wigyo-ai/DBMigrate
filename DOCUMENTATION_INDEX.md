@@ -1,6 +1,6 @@
 # Documentation Index
 
-Complete guide to all documentation for the Database Migration System.
+Complete guide to all documentation for the H2O.ai Agentic Database Migration System.
 
 ## 📚 Documentation Files
 
@@ -237,12 +237,12 @@ Located in project root:
 
 | Document | Status | Last Updated | Version |
 |----------|--------|--------------|---------|
-| README.md | ✅ Complete | Dec 9, 2025 | 1.0.0 |
-| QUICKSTART.md | ✅ Complete | Dec 9, 2025 | 1.0.0 |
-| PROJECT_SUMMARY.md | ✅ Complete | Dec 9, 2025 | 1.0.0 |
+| README.md | ✅ Complete | Dec 12, 2025 | 1.0.1 |
+| QUICKSTART.md | ✅ Complete | Dec 12, 2025 | 1.0.1 |
+| PROJECT_SUMMARY.md | ✅ Complete | Dec 12, 2025 | 1.0.1 |
 | SDK_MIGRATION_NOTES.md | ✅ Complete | Dec 9, 2025 | 1.0.0 |
 | .env.example | ✅ Complete | Dec 9, 2025 | 1.0.0 |
-| DOCUMENTATION_INDEX.md | ✅ Complete | Dec 9, 2025 | 1.0.0 |
+| DOCUMENTATION_INDEX.md | ✅ Complete | Dec 12, 2025 | 1.0.1 |
 
 ---
 
@@ -307,7 +307,7 @@ python diagnose_gpte_api.py
 
 ## 🔄 Documentation Updates
 
-This documentation is current as of **December 9, 2025**.
+This documentation is current as of **December 12, 2025**.
 
 ### How to Update Documentation
 1. Update the relevant .md file
@@ -317,6 +317,11 @@ This documentation is current as of **December 9, 2025**.
 5. Review for consistency
 
 ### Version History
+- **1.0.1** (Dec 12, 2025) - Updated documentation for enhanced features
+  - Updated validation agent behavior (100-row test limit)
+  - Enhanced UI/UX documentation
+  - Improved logging and workflow descriptions
+  - Updated version numbers and dates
 - **1.0.0** (Dec 9, 2025) - Initial comprehensive documentation
   - Complete README
   - Quick start guide
@@ -355,6 +360,6 @@ Before considering documentation complete:
 
 ---
 
-*Documentation Index Version: 1.0.0*
-*Last Updated: December 9, 2025*
+*Documentation Index Version: 1.0.1*
+*Last Updated: December 12, 2025*
 *Status: Complete ✅*

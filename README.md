@@ -1,6 +1,6 @@
-# Database Migration System with H2O.ai GPTe Agents
+# H2O.ai Agentic Database Migration System
 
-A production-ready database migration application that uses H2O.ai GPTe agents to orchestrate PostgreSQL database migrations with a web-based GUI.
+A production-ready database migration application that uses H2O.ai GPTe agents to orchestrate intelligent PostgreSQL database migrations with a modern web-based interface.
 
 ## Features
 
@@ -10,7 +10,7 @@ A production-ready database migration application that uses H2O.ai GPTe agents t
   - **Generation Agent**: Creates migration plans with risk assessment and APPROVE/DENY recommendations
   - **Execution Agent**: Executes full migrations with real-time progress tracking and validation
 
-- **Web-Based GUI**: Modern, responsive interface for configuration and monitoring
+- **Web-Based GUI**: Modern, responsive interface with real-time updates and enhanced UX
 - **RESTful API**: Flask-based backend with comprehensive endpoints
 - **Real-Time Updates**: Live progress logs and agent status updates
 - **Human-in-the-Loop**: Manual approval/denial workflow for migration execution
@@ -168,7 +168,7 @@ Click "Start Migration Workflow" to begin. The system will execute:
 2. **Validation Phase** (Agent 2):
    - Creates sample backups from both databases
    - Selects a suitable test table (small, representative)
-   - Performs test migration on the selected table
+   - Performs test migration on the selected table (limited to 100 rows for testing)
    - Validates data integrity (row counts, checksums, sample data)
    - Generates validation report with AI recommendations
    - **Output**: Test migration results and feasibility assessment
@@ -578,6 +578,13 @@ Built with:
 
 ## Version History
 
+### Version 1.0.1 (December 12, 2025)
+- Enhanced validation agent with optimized test migrations (100-row limit)
+- Improved workflow logging with structured formatting
+- Enhanced UI/UX with modern styling and better visual feedback
+- Better error handling and status reporting
+- Improved configuration save functionality
+
 ### Version 1.0.0 (December 9, 2025)
 - Initial release
 - Four AI-powered agents for complete migration workflow
@@ -589,6 +596,6 @@ Built with:
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: December 9, 2025
+**Version**: 1.0.1
+**Last Updated**: December 12, 2025
 **Status**: Production Ready ✅

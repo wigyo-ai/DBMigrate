@@ -381,15 +381,20 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
 
     try:
         # Get row count
+        logger.info(f"    → Analyzing source table...")
         total_rows = get_row_count(source_config, schema, table)
+        logger.info(f"      Total rows in source: {total_rows}")
 
         # Limit total rows if max_rows is specified
         if max_rows is not None:
             total_rows = min(total_rows, max_rows)
+            logger.info(f"      Limited to: {total_rows} rows for testing")
 
         # Get table structure
+        logger.info(f"    → Retrieving table structure...")
         structure = get_table_structure(source_config, schema, table)
         column_names = [col['column_name'] for col in structure['columns']]
+        logger.info(f"      Columns: {len(column_names)}, Indexes: {len(structure.get('indexes', []))}, Constraints: {len(structure.get('constraints', []))}")
 
         # Create table in destination if it doesn't exist
         with DatabaseConnection(dest_config) as dest_db:
@@ -403,6 +408,7 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
             exists = dest_db.execute_query(check_query, (schema, table))
 
             if not exists[0]['exists']:
+                logger.info(f"    → Creating table in destination...")
                 # Create table structure
                 create_cols = []
                 for col in structure['columns']:
@@ -417,12 +423,18 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
 
                 create_table = f"CREATE TABLE {schema}.{table} ({', '.join(create_cols)})"
                 dest_db.execute_command(create_table)
+                logger.info(f"      ✓ Table created successfully")
+            else:
+                logger.info(f"    → Table already exists in destination")
 
         # Migrate data in batches
+        logger.info(f"    → Migrating data in batches of {batch_size}...")
         with DatabaseConnection(source_config) as source_db:
             with DatabaseConnection(dest_config) as dest_db:
                 offset = 0
+                batch_num = 0
                 while offset < total_rows:
+                    batch_num += 1
                     # Fetch batch from source
                     select_query = sql.SQL("SELECT * FROM {}.{} ORDER BY {} LIMIT %s OFFSET %s").format(
                         sql.Identifier(schema),
@@ -438,15 +450,19 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
                         break
 
                     # Insert batch into destination
+                    batch_rows = 0
                     for row in batch:
                         placeholders = ','.join(['%s'] * len(column_names))
                         insert_query = f"INSERT INTO {schema}.{table} ({','.join(column_names)}) VALUES ({placeholders})"
                         values = tuple(row[col] for col in column_names)
                         dest_db.execute_command(insert_query, values)
                         rows_migrated += 1
+                        batch_rows += 1
 
+                    logger.info(f"      Batch {batch_num}: Migrated {batch_rows} rows (Total: {rows_migrated}/{total_rows})")
                     offset += batch_size
 
+        logger.info(f"    ✓ Migration completed: {rows_migrated} rows migrated")
         return {
             'success': True,
             'total_rows': total_rows,
@@ -455,7 +471,8 @@ def migrate_table(source_config: Dict[str, str], dest_config: Dict[str, str],
         }
 
     except Exception as e:
-        logger.error(f"Table migration failed: {e}")
+        logger.error(f"    ✗ Table migration failed: {e}")
+        logger.error(f"      Rows migrated before failure: {rows_migrated}/{total_rows}")
         return {
             'success': False,
             'total_rows': total_rows,
@@ -485,32 +502,52 @@ def validate_migration(source_config: Dict[str, str], dest_config: Dict[str, str
     }
 
     try:
+        logger.info(f"    → Running validation checks...")
+
         # Compare row counts
+        logger.info(f"      Check 1/3: Comparing row counts...")
         source_count = get_row_count(source_config, schema, table)
         dest_count = get_row_count(dest_config, schema, table)
+        row_match = source_count == dest_count
         results['checks']['row_count'] = {
             'source': source_count,
             'destination': dest_count,
-            'match': source_count == dest_count
+            'match': row_match
         }
+        if row_match:
+            logger.info(f"        ✓ Row counts match: {source_count}")
+        else:
+            logger.error(f"        ✗ Row count mismatch! Source: {source_count}, Destination: {dest_count}")
 
         # Compare checksums
+        logger.info(f"      Check 2/3: Comparing data checksums...")
         source_checksum = calculate_table_checksum(source_config, schema, table)
         dest_checksum = calculate_table_checksum(dest_config, schema, table)
+        checksum_match = source_checksum == dest_checksum
         results['checks']['checksum'] = {
             'source': source_checksum,
             'destination': dest_checksum,
-            'match': source_checksum == dest_checksum
+            'match': checksum_match
         }
+        if checksum_match:
+            logger.info(f"        ✓ Checksums match: {source_checksum[:16]}...")
+        else:
+            logger.error(f"        ✗ Checksum mismatch! Data integrity issue detected")
 
         # Compare sample data
+        logger.info(f"      Check 3/3: Comparing sample data...")
         source_sample = get_sample_data(source_config, schema, table, 5)
         dest_sample = get_sample_data(dest_config, schema, table, 5)
+        sample_match = source_sample == dest_sample
         results['checks']['sample_data'] = {
             'source_count': len(source_sample),
             'destination_count': len(dest_sample),
-            'match': source_sample == dest_sample
+            'match': sample_match
         }
+        if sample_match:
+            logger.info(f"        ✓ Sample data matches ({len(source_sample)} rows compared)")
+        else:
+            logger.error(f"        ✗ Sample data mismatch detected!")
 
         # Overall validation
         all_checks_passed = all(
@@ -518,8 +555,13 @@ def validate_migration(source_config: Dict[str, str], dest_config: Dict[str, str
         )
         results['validation_passed'] = all_checks_passed
 
+        if all_checks_passed:
+            logger.info(f"    ✓ All validation checks passed!")
+        else:
+            logger.error(f"    ✗ Validation failed: {sum(1 for c in results['checks'].values() if not c.get('match', False))}/3 checks failed")
+
     except Exception as e:
-        logger.error(f"Validation failed: {e}")
+        logger.error(f"    ✗ Validation error: {e}")
         results['error'] = str(e)
         results['validation_passed'] = False
 

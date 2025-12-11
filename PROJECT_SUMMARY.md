@@ -1,22 +1,23 @@
-# Database Migration System - Project Summary
+# H2O.ai Agentic Database Migration System - Project Summary
 
 ## Overview
 
-This is a **production-ready database migration application** that uses AI-powered agents from H2O.ai GPTe to orchestrate intelligent PostgreSQL database migrations through a modern web interface.
+This is a **production-ready database migration application** that uses AI-powered agents from H2O.ai GPTe to orchestrate intelligent PostgreSQL database migrations through a modern web interface with enhanced UX.
 
 ## Key Features
 
 ### 🤖 Four AI-Powered Agents
 1. **Discovery Agent** - Analyzes source and destination databases
-2. **Validation Agent** - Tests migration feasibility with sample data
+2. **Validation Agent** - Tests migration feasibility with sample data (100-row limit for efficiency)
 3. **Generation Agent** - Creates migration plans with AI-driven risk assessment
 4. **Execution Agent** - Executes full migrations with real-time monitoring
 
 ### 🌐 Modern Web Interface
-- Responsive HTML/CSS/JavaScript GUI
-- Real-time status updates
-- Live workflow logs
+- Responsive HTML/CSS/JavaScript GUI with enhanced styling
+- Real-time status updates with visual feedback
+- Live workflow logs with structured formatting
 - Comprehensive agent reports
+- Improved user experience and configuration handling
 
 ### 🔒 Production-Ready Features
 - Human-in-the-loop approval workflow
@@ -101,7 +102,7 @@ DBMigrate/
 ┌─────────────────────────────────────────────────────────────┐
 │               Agent 2: Validation Agent                      │
 │  • Creates sample backups                                   │
-│  • Performs test migration on sample table                  │
+│  • Performs test migration on sample table (100 rows)      │
 │  • Validates data integrity (counts, checksums, samples)   │
 │  → Output: Feasibility assessment                           │
 └─────────────────────────────────────────────────────────────┘
@@ -342,8 +343,8 @@ sudo systemctl start dbmigrate
 
 ## Version Information
 
-- **Version**: 1.0.0
-- **Release Date**: December 9, 2025
+- **Version**: 1.0.1
+- **Release Date**: December 12, 2025
 - **Status**: Production Ready ✅
 - **Python**: 3.8+
 - **H2O.ai GPTe SDK**: 1.6.47
@@ -406,5 +407,5 @@ http://localhost:8000
 
 ---
 
-*Last Updated: December 9, 2025*
+*Last Updated: December 12, 2025*
 *Project Status: Production Ready ✅*

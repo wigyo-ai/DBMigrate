@@ -624,12 +624,17 @@
             border-radius: 8px;
             border-left: 4px solid var(--primary);
             margin: 8px 0;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
         }
 
         .report-comparison p {
             margin: 0;
             white-space: pre-wrap;
-            line-height: 1.7;
+            line-height: 1.8;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #e2e8f0;
         }
 
         .migration-plan {
@@ -637,8 +642,12 @@
             padding: 16px;
             border-radius: 8px;
             border-left: 4px solid var(--success);
-            line-height: 1.7;
+            line-height: 1.8;
             margin: 8px 0;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #e2e8f0;
+            white-space: pre-wrap;
         }
 
         .issues-list {
@@ -815,10 +824,10 @@
                     <div id="recommendationContent"></div>
                 </div>
                 <div style="margin-top: 20px;">
-                    <button class="btn btn-success" onclick="approveMigration()">
+                    <button class="btn btn-success" id="approveBtn" onclick="approveMigration()">
                         Approve Migration
                     </button>
-                    <button class="btn btn-danger" onclick="denyMigration()">
+                    <button class="btn btn-danger" id="denyBtn" onclick="denyMigration()">
                         Deny Migration
                     </button>
                 </div>
@@ -987,6 +996,9 @@
                 if (data.workflow_status === 'awaiting_approval') {
                     document.getElementById('approvalSection').classList.remove('hidden');
                     await loadGenerationReport();
+                } else {
+                    // Hide approval section if not awaiting approval
+                    document.getElementById('approvalSection').classList.add('hidden');
                 }
 
                 // Check if completed
@@ -1058,27 +1070,60 @@
 
         // Approve migration
         async function approveMigration() {
+            console.log('approveMigration() called');
+
+            const approveBtn = document.getElementById('approveBtn');
+            const denyBtn = document.getElementById('denyBtn');
+
+            // Disable buttons during processing
+            approveBtn.disabled = true;
+            denyBtn.disabled = true;
+            approveBtn.textContent = 'Processing...';
+
             try {
+                console.log('Sending POST to /api/workflow/approve');
                 const response = await fetch(`${API_BASE}/api/workflow/approve`, {
                     method: 'POST'
                 });
 
+                console.log('Response status:', response.status);
                 const result = await response.json();
+                console.log('Response result:', result);
 
                 if (result.success) {
                     showAlert('Migration approved! Execution starting...', 'success');
                     document.getElementById('approvalSection').classList.add('hidden');
                 } else {
                     showAlert(`Approval failed: ${result.error}`, 'error');
+                    // Re-enable buttons on error
+                    approveBtn.disabled = false;
+                    denyBtn.disabled = false;
+                    approveBtn.textContent = 'Approve Migration';
                 }
             } catch (error) {
+                console.error('Approve migration error:', error);
                 showAlert(`Error: ${error.message}`, 'error');
+                // Re-enable buttons on error
+                approveBtn.disabled = false;
+                denyBtn.disabled = false;
+                approveBtn.textContent = 'Approve Migration';
             }
         }
 
         // Deny migration
         async function denyMigration() {
             const reason = prompt('Please provide a reason for denial (optional):');
+
+            // If user cancels the prompt, don't proceed
+            if (reason === null) return;
+
+            const approveBtn = document.getElementById('approveBtn');
+            const denyBtn = document.getElementById('denyBtn');
+
+            // Disable buttons during processing
+            approveBtn.disabled = true;
+            denyBtn.disabled = true;
+            denyBtn.textContent = 'Processing...';
 
             try {
                 const response = await fetch(`${API_BASE}/api/workflow/deny`, {
@@ -1095,10 +1140,90 @@
                     clearInterval(pollInterval);
                 } else {
                     showAlert(`Denial failed: ${result.error}`, 'error');
+                    // Re-enable buttons on error
+                    approveBtn.disabled = false;
+                    denyBtn.disabled = false;
+                    denyBtn.textContent = 'Deny Migration';
                 }
             } catch (error) {
                 showAlert(`Error: ${error.message}`, 'error');
+                // Re-enable buttons on error
+                approveBtn.disabled = false;
+                denyBtn.disabled = false;
+                denyBtn.textContent = 'Deny Migration';
             }
+        }
+
+        // Helper function to format migration plan object into human-readable text
+        function formatMigrationPlanObject(plan) {
+            let text = '';
+
+            // Format plan_text if available
+            if (plan.plan_text) {
+                text += plan.plan_text.replace(/\n/g, '<br>');
+                return text;
+            }
+
+            // Format structured plan
+            for (const [key, value] of Object.entries(plan)) {
+                // Skip raw/error fields
+                if (key === 'raw' || key === 'error') continue;
+
+                // Format key as title
+                const title = key.split('_').map(word =>
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
+
+                text += `<strong>${title}:</strong><br>`;
+
+                // Format value based on type
+                if (Array.isArray(value)) {
+                    value.forEach(item => {
+                        if (typeof item === 'object') {
+                            text += `  • ${JSON.stringify(item)}<br>`;
+                        } else {
+                            text += `  • ${item}<br>`;
+                        }
+                    });
+                } else if (typeof value === 'object' && value !== null) {
+                    text += formatNestedObject(value, 1);
+                } else {
+                    text += `${value}<br>`;
+                }
+                text += '<br>';
+            }
+
+            return text || 'No migration plan details available';
+        }
+
+        // Helper to format nested objects
+        function formatNestedObject(obj, indent = 0) {
+            let text = '';
+            const spacing = '&nbsp;&nbsp;'.repeat(indent * 2);
+
+            for (const [key, value] of Object.entries(obj)) {
+                const title = key.split('_').map(word =>
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
+
+                if (Array.isArray(value)) {
+                    text += `${spacing}<strong>${title}:</strong><br>`;
+                    value.forEach(item => {
+                        if (typeof item === 'object') {
+                            text += `${spacing}&nbsp;&nbsp;• ${JSON.stringify(item)}<br>`;
+                        } else {
+                            text += `${spacing}&nbsp;&nbsp;• ${item}<br>`;
+                        }
+                    });
+                } else if (typeof value === 'object' && value !== null) {
+                    text += `${spacing}<strong>${title}:</strong><br>`;
+                    text += formatNestedObject(value, indent + 1);
+                } else {
+                    text += `${spacing}<strong>${title}:</strong> ${value}<br>`;
+                }
+            }
+
+            return text;
         }
 
         // Load all reports
@@ -1138,7 +1263,15 @@
                 if (data.comparison) {
                     html += '<h5>Comparison Analysis</h5>';
                     html += '<div class="report-comparison">';
-                    html += `<p>${data.comparison.analysis || data.comparison.summary || JSON.stringify(data.comparison, null, 2)}</p>`;
+                    if (data.comparison.analysis || data.comparison.summary) {
+                        const comparisonText = (data.comparison.analysis || data.comparison.summary).replace(/\n/g, '<br>');
+                        html += `<p>${comparisonText}</p>`;
+                    } else if (typeof data.comparison === 'string') {
+                        html += `<p>${data.comparison.replace(/\n/g, '<br>')}</p>`;
+                    } else {
+                        // Format object as readable text
+                        html += `<p>${formatMigrationPlanObject(data.comparison)}</p>`;
+                    }
                     html += '</div>';
                 }
                 html += '</div>';
@@ -1198,7 +1331,9 @@
                     if (typeof data.migration_plan === 'string') {
                         html += `<div class="migration-plan">${data.migration_plan.replace(/\n/g, '<br>')}</div>`;
                     } else {
-                        html += `<pre class="report-content">${JSON.stringify(data.migration_plan, null, 2)}</pre>`;
+                        // Format JSON as readable text with Arial font
+                        const planText = formatMigrationPlanObject(data.migration_plan);
+                        html += `<div class="migration-plan">${planText}</div>`;
                     }
                 }
                 html += '</div>';
